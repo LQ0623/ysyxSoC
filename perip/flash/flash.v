@@ -20,6 +20,8 @@ module flash (
 
   wire ren = (state == addr_t) && (counter == 8'd23);
   wire [31:0] rdata;
+  // TAG：这里还拼接一位地址是因为最后一位地址传入的时候，正好从addr_t状态切换到data_t状态，这里需要一周期，所以最后一位地址需要直接拼接
+  // 而且下面只写入了23位的地址，没有写入24位的地址
   wire [31:0] raddr = {8'b0, addr[22:0], mosi};
   flash_cmd flash_cmd_i(
     .clock(sck),
