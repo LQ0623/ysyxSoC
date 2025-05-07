@@ -172,8 +172,6 @@ spi_top u0_spi_top (
   localparam WAIT_TRANS   = 4'b0101;
   localparam READ_DATA    = 4'b0110;
 
-  reg flag = 0;
-
   // ------------------- XIP模式状态机 -------------------
   always @(posedge clock or posedge reset) begin
     if(reset)begin
@@ -269,18 +267,24 @@ spi_top u0_spi_top (
           end
         end
 
-        // 等待go_busy位被置为0,表示传输完毕，然后重新读取数据
+        
         WAIT_TRANS: begin
-          flash_xip_penable     <= 1'b1;
-          flag <= 1;
-          if(flash_xip_penable == 1'b1 && apb_pready == 1'b1)begin
-            flag <= 0;
-            if(apb_prdata[8] == 1'b0)begin    // ctrl.go_busy == 0
-              flash_xip_penable <= 1'b0;
-              flash_xip_state   <= READ_DATA;
+          // 等待go_busy位被置为0,表示传输完毕，然后重新读取数据
+          // flash_xip_penable     <= 1'b1;
+          // if(flash_xip_penable == 1'b1 && apb_pready == 1'b1)begin
+          //   if(apb_prdata[8] == 1'b0)begin    // ctrl.go_busy == 0
+          //     flash_xip_penable <= 1'b0;
+          //     flash_xip_state   <= READ_DATA;
 
-              flash_xip_paddr   <= (`SPI_RX_0 << 2);    // lower 32 bits
-            end
+          //     flash_xip_paddr   <= (`SPI_RX_0 << 2);    // lower 32 bits
+          //   end
+          // end
+          // 不使用go_busy位判断是否传输完毕，设置控制寄存器的IE位后，SPI master在传输结束后将会发出中断信号，直接使用中断信号进行判断
+          // spi_irq_out中断信号在读取或者写入任意寄存器之后都会被取消置位
+          if(spi_irq_out)begin
+            flash_xip_state   <= READ_DATA;
+            
+            flash_xip_paddr   <= (`SPI_RX_0 << 2);    // lower 32 bits
           end
         end
 
