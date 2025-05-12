@@ -75,9 +75,15 @@ module flash (
   always@(posedge sck or posedge reset) begin
     if (reset) data <= 32'd0;
     else if (state == data_t) begin
+      // 刚开始传输的时候，这里起始就已经将data_bswap赋值给了data变量，然后后续的输出的就是交换了字节序的值
       data <= { {counter == 8'd0 ? data_bswap : data}[30:0], 1'b0 };
     end
   end
+  // always @(posedge sck) begin
+  //   if(data_bswap != 0)begin
+  //     $display("data_bswap is %08x",data_bswap);
+  //   end
+  // end
 
   assign miso = ss ? 1'b1 : ({(state == data_t && counter == 8'd0) ? data_bswap : data}[31]);
 

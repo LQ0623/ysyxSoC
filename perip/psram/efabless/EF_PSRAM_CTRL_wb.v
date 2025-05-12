@@ -39,8 +39,9 @@ module EF_PSRAM_CTRL_wb (
     output  wire [3:0]      douten
 );
 
-    localparam  ST_IDLE = 1'b0,
-                ST_WAIT = 1'b1;
+    localparam  QPI_INIT    = 2'b00,
+                ST_IDLE     = 2'b01,
+                ST_WAIT     = 2'b10;
 
     wire        mr_sck;
     wire        mr_ce_n;
@@ -53,6 +54,14 @@ module EF_PSRAM_CTRL_wb (
     wire [3:0]  mw_din;
     wire [3:0]  mw_dout;
     wire        mw_doe;
+
+    // QPI初始化使用的信号
+    reg         init_start;
+    wire        init_done;
+    wire        init_sck;
+    wire        init_ce_n;
+    wire [3:0]  init_dout;
+    wire        init_doe;
 
     // PSRAM Reader and Writer wires
     wire        mr_rd;
@@ -69,15 +78,30 @@ module EF_PSRAM_CTRL_wb (
     //wire[3:0]   wb_byte_sel     =   sel_i & {4{wb_we}};
 
     // The FSM
-    reg         state, nstate;
+    reg [1:0]   state, nstate;
     always @ (posedge clk_i or posedge rst_i)
         if(rst_i)
-            state <= ST_IDLE;
+            state <= QPI_INIT;
         else
             state <= nstate;
 
+    // 变化QPI_START信号
+    always @(*) begin
+        if(state == QPI_INIT)begin
+            init_start  = 1'b1;
+        end else begin
+            init_start  = 1'b0;
+        end
+    end
+
     always @* begin
         case(state)
+            QPI_INIT :
+                if(init_done)
+                    nstate = ST_IDLE;
+                else
+                    nstate = QPI_INIT;
+
             ST_IDLE :
                 if(wb_valid)
                     nstate = ST_WAIT;
@@ -89,6 +113,11 @@ module EF_PSRAM_CTRL_wb (
                     nstate = ST_IDLE;
                 else
                     nstate = ST_WAIT;
+            default : begin
+                state = state;
+                $display("Assertion failed: Unsupported state in PSRAM CTRL");
+                $fatal;
+            end
         endcase
     end
 
@@ -161,10 +190,24 @@ module EF_PSRAM_CTRL_wb (
         .douten(mw_doe)
     );
 
-    assign sck  = wb_we ? mw_sck  : mr_sck;
-    assign ce_n = wb_we ? mw_ce_n : mr_ce_n;
-    assign dout = wb_we ? mw_dout : mr_dout;
-    assign douten  = wb_we ? {4{mw_doe}}  : {4{mr_doe}};
+    PSRAM_INIT psram_init (
+        // 输入端口
+        .clk       (clk_i),           // 系统时钟
+        .rst_n     (~rst_i),         // 系统复位
+        .start     (init_start),    // 初始化启动信号
+        
+        // 输出端口
+        .init_done (init_done),     // 初始化完成标志
+        .sck       (init_sck),     // PSRAM 时钟
+        .ce_n      (init_ce_n),    // PSRAM 片选
+        .dout      (init_dout),    // PSRAM 数据输出
+        .douten    (init_doe)   // PSRAM 输出使能
+    );
+
+    assign sck  = (state == QPI_INIT) ? init_sck    : (wb_we ? mw_sck  : mr_sck);
+    assign ce_n = (state == QPI_INIT) ? init_ce_n   : (wb_we ? mw_ce_n : mr_ce_n);
+    assign dout = (state == QPI_INIT) ? init_dout   : (wb_we ? mw_dout : mr_dout);
+    assign douten  = (state == QPI_INIT) ? {4{init_doe}} : (wb_we ? {4{mw_doe}}  : {4{mr_doe}});
 
     assign mw_din = din;
     assign mr_din = din;
