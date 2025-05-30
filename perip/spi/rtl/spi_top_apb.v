@@ -185,6 +185,7 @@ spi_top u0_spi_top (
     end else begin
       case(flash_xip_state)
         INIT_DIV_SET: begin
+          // SEL需要早一拍置位,保证地址和数据的稳定
           flash_xip_psel        <= 1'b1;
           flash_xip_pwrite      <= 1'b1;
           flash_xip_pwdata      <= 50000000 / (2 * 2500000) - 1;
