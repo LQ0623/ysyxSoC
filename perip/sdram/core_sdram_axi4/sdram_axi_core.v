@@ -718,7 +718,8 @@ begin
         ack_q <= 1'b1;
     else
         ack_q <= 1'b0;*/
-    if (state_q == STATE_WRITE0)
+    // 这里和下面加上next_state_r == STATE_WRITE0是为了确保ack_q信号只存在一个周期
+    if (state_q == STATE_WRITE0 && next_state_r == STATE_WRITE0)
         ack_q <= 1'b1;
     else if (rd_q[SDRAM_READ_LATENCY])
         ack_q <= 1'b1;
@@ -729,7 +730,8 @@ end
 assign ram_ack_w = ack_q;
 
 // Accept command in READ or WRITE0 states
-assign ram_accept_w = (state_q == STATE_READ || state_q == STATE_WRITE0);
+// 这个信号表示当信号为高(1)​​：表示 SDRAM 控制器当前可以接受新的请求；​​当信号为低(0)​​：表示控制器当前无法处理新请求
+assign ram_accept_w = (state_q == STATE_READ || state_q == STATE_WRITE0 && next_state_r == STATE_WRITE0);
 
 //-----------------------------------------------------------------
 // SDRAM I/O
