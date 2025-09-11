@@ -131,7 +131,7 @@ module sdram_32mX16(
       is_read   <= 1'b0;
     end else if(cmd == CMD_READ) begin
       is_read   <= 1'b1;
-    end else if(burst_cnt == ({1'b0, CAS_Latency} + Length - 'd1))begin
+    end else if(burst_cnt == ({1'b0, CAS_Latency} + Length - 'd2))begin
       is_read   <= 1'b0;
     end
   end

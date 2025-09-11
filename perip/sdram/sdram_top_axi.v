@@ -53,7 +53,7 @@ module sdram_top_axi(
   assign sdram_dq = sdram_dout_en ? sdram_dout : 32'bz;
   sdram_axi #(
     .SDRAM_MHZ(100),
-    .SDRAM_ADDR_W(24),
+    .SDRAM_ADDR_W(25),
     .SDRAM_COL_W(9),
     .SDRAM_READ_LATENCY(2)
   ) u_sdram_axi(

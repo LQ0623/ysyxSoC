@@ -562,7 +562,7 @@ begin
         else if (refresh_timer_q == 10)
         begin
             command_q <= CMD_LOAD_MODE;
-            addr_q    <= MODE_REG;
+            addr_q    <= {1'b0, MODE_REG};
         end
         // Other cycles during init - just NOP
         else
@@ -624,7 +624,7 @@ begin
     STATE_READ :
     begin
         command_q   <= CMD_READ;
-        addr_q      <= addr_col_w;
+        addr_q      <= {ram_addr_w[25],addr_col_w[12:0]};
         bank_q      <= addr_bank_w;
 
         // Disable auto precharge (auto close of row)
@@ -639,7 +639,7 @@ begin
     STATE_WRITE0 :
     begin
         command_q       <= CMD_WRITE;
-        addr_q          <= addr_col_w;
+        addr_q          <= {ram_addr_w[25],addr_col_w[12:0]};
         bank_q          <= addr_bank_w;
         // data_q          <= ram_write_data_w[15:0];
         data_q          <= ram_write_data_w;
@@ -731,7 +731,7 @@ assign ram_ack_w = ack_q;
 
 // Accept command in READ or WRITE0 states
 // 这个信号表示当信号为高(1)​​：表示 SDRAM 控制器当前可以接受新的请求；​​当信号为低(0)​​：表示控制器当前无法处理新请求
-assign ram_accept_w = (state_q == STATE_READ || state_q == STATE_WRITE0 && next_state_r == STATE_WRITE0);
+assign ram_accept_w = (state_q == STATE_READ || (state_q == STATE_WRITE0 && next_state_r == STATE_WRITE0));
 
 //-----------------------------------------------------------------
 // SDRAM I/O
@@ -748,9 +748,10 @@ assign sdram_cas_o  = command_q[1];
 assign sdram_we_o   = command_q[0];
 assign sdram_dqm_o  = dqm_q;
 assign sdram_ba_o   = bank_q;
-// assign sdram_addr_o = addr_q;
-assign sdram_addr_o[12:0] = addr_q;
-assign sdram_addr_o[13] = ram_addr_w[25];
+// TAG: 进行下面的修改的原因是字扩展的时候，按照注释的写法会导致有段时间选中的chip不对，所以需要直接使用所存的地址数据
+assign sdram_addr_o = addr_q;
+// assign sdram_addr_o[12:0] = addr_q;
+// assign sdram_addr_o[13] = ram_addr_w[25];
 
 //-----------------------------------------------------------------
 // Simulation only
